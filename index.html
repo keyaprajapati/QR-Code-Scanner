@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AuraScan - Premium QR Hub</title>
+  
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <!-- HTML5 QR Code Scanner Library -->
+  <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+  
+  <!-- QRCode.js Generator Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="min-h-screen relative flex flex-col items-center justify-between p-4 md:p-8 text-slate-800">
+
+  <!-- Ambient Light Orbs -->
+  <div class="orb orb-1"></div>
+  <div class="orb orb-2"></div>
+  <div class="orb orb-3"></div>
+
+  <!-- Header -->
+  <header class="w-full max-w-5xl z-10 flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+    <div class="flex items-center gap-3">
+      <div class="relative w-12 h-12 rounded-2xl bg-gradient-to-tr from-indigo-600 to-cyan-500 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20 pulse-glow">
+        <i data-lucide="qr-code" class="w-7 h-7"></i>
+      </div>
+      <div>
+        <h1 class="text-2xl font-extrabold tracking-tight title-font bg-gradient-to-r from-indigo-700 via-indigo-900 to-cyan-600 bg-clip-text text-transparent">AURASCAN</h1>
+        <p class="text-xs font-semibold text-indigo-600/70 tracking-widest uppercase">Premium QR Engine</p>
+      </div>
+    </div>
+    
+    <!-- Info & Status Panel -->
+    <div class="flex items-center gap-4 bg-white/50 backdrop-blur-md px-4 py-2 rounded-2xl border border-white/60 shadow-sm text-sm">
+      <div class="flex items-center gap-2">
+        <span id="scanner-pulse" class="w-2.5 h-2.5 rounded-full bg-slate-400"></span>
+        <span id="scanner-status" class="font-medium text-slate-600">Engine Idle</span>
+      </div>
+      <div class="h-4 w-[1px] bg-slate-300"></div>
+      <button onclick="toggleAudioMute()" id="mute-btn" class="text-slate-500 hover:text-indigo-600 transition-colors flex items-center gap-1.5 font-medium" title="Toggle audio alert on success scan">
+        <i data-lucide="volume-2" class="w-4 h-4"></i>
+        <span>Sound On</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Workstation -->
+  <main class="w-full max-w-5xl z-10 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start mb-6">
+    
+    <!-- Left Interaction Deck (Scanning & Gen Workspace) -->
+    <section class="lg:col-span-7 perspective-container w-full">
+      <div id="main-interactive-card" class="glass-panel rounded-3xl p-6 md:p-8 shadow-2xl parallax-card relative">
+        
+        <!-- Navigation Tabs -->
+        <nav class="flex border-b border-indigo-100/40 pb-4 mb-6 justify-between gap-2 overflow-x-auto">
+          <button onclick="switchTab('live-scan')" id="tab-live-scan" class="tab-btn active px-4 py-2 text-sm font-bold text-slate-500 flex items-center gap-2 whitespace-nowrap">
+            <i data-lucide="aperture" class="w-4.5 h-4.5"></i>
+            Live Scanner
+          </button>
+          <button onclick="switchTab('upload-scan')" id="tab-upload-scan" class="tab-btn px-4 py-2 text-sm font-bold text-slate-500 flex items-center gap-2 whitespace-nowrap">
+            <i data-lucide="image-plus" class="w-4.5 h-4.5"></i>
+            Upload Image
+          </button>
+          <button onclick="switchTab('create-qr')" id="tab-create-qr" class="tab-btn px-4 py-2 text-sm font-bold text-slate-500 flex items-center gap-2 whitespace-nowrap">
+            <i data-lucide="plus-circle" class="w-4.5 h-4.5"></i>
+            Generate QR
+          </button>
+        </nav>
+
+        <!-- Dynamic Container Blocks -->
+        <div class="min-h-[380px] flex flex-col justify-between">
+          
+          <!-- TAB 1: Live Scanner View -->
+          <div id="panel-live-scan" class="tab-panel flex flex-col items-center">
+            <div class="w-full max-w-[420px] relative rounded-2xl overflow-hidden aspect-square bg-slate-900/5 shadow-inner border border-slate-200/50 flex items-center justify-center mb-6" id="scanner-view-box">
+              
+              <!-- 4 Corner Targets for Camera scan area -->
+              <div class="corner-border cb-tl"></div>
+              <div class="corner-border cb-tr"></div>
+              <div class="corner-border cb-bl"></div>
+              <div class="corner-border cb-br"></div>
+
+              <!-- Animated Scan Laser Beam -->
+              <div id="laser" class="laser-line absolute left-[4%] right-[4%] h-[3px] bg-gradient-to-r from-cyan-400 via-indigo-500 to-cyan-400 rounded-full shadow-[0_0_15px_#6366f1] z-10 pointer-events-none hidden"></div>
+
+              <!-- Interactive Camera Placeholder -->
+              <div id="camera-placeholder" class="absolute inset-0 flex flex-col items-center justify-center p-6 text-center z-0 transition-opacity duration-300">
+                <div class="w-16 h-16 rounded-full bg-white/90 shadow-md flex items-center justify-center text-indigo-600 mb-4 pulse-glow">
+                  <i data-lucide="camera" class="w-8 h-8"></i>
+                </div>
+                <h3 class="font-bold text-slate-800 text-lg mb-1">Access Device Camera</h3>
+                <p class="text-sm text-slate-500 max-w-xs">Permit camera access to scan physical QR codes instantly with real-time feedback.</p>
+                <button onclick="startLiveCamera()" class="mt-5 px-6 py-2.5 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/20 transition-all hover:scale-105 active:scale-95 flex items-center gap-2">
+                  <i data-lucide="video" class="w-4 h-4"></i> Start Camera
+                </button>
+              </div>
+
+              <!-- Real camera feed target -->
+              <div id="reader" class="w-full h-full object-cover rounded-2xl z-0 overflow-hidden"></div>
+            </div>
+
+            <!-- Scanner Controls -->
+            <div id="live-controls" class="w-full max-w-[420px] flex items-center justify-between gap-4 hidden">
+              <button onclick="stopLiveCamera()" class="flex-1 py-3 bg-red-50/50 hover:bg-red-50 text-red-600 font-semibold rounded-xl border border-red-100 transition-all flex items-center justify-center gap-2">
+                <i data-lucide="video-off" class="w-4 h-4"></i> Stop Camera
+              </button>
+              <button id="torch-toggle" onclick="toggleTorch()" class="px-5 py-3 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-2">
+                <i data-lucide="zap" class="w-4 h-4"></i> Flash
+              </button>
+            </div>
+          </div>
+
+          <!-- TAB 2: Drag and Drop Upload -->
+          <div id="panel-upload-scan" class="tab-panel hidden flex flex-col items-center">
+            <div id="drop-zone" class="w-full max-w-[420px] aspect-square rounded-2xl border-2 border-dashed border-indigo-200 hover:border-indigo-500/80 bg-white/40 hover:bg-white/60 transition-all flex flex-col items-center justify-center p-6 text-center cursor-pointer group relative mb-4">
+              <input type="file" id="file-input" accept="image/*" class="absolute inset-0 opacity-0 cursor-pointer" onchange="handleFileSelect(event)">
+              
+              <div id="upload-idle-state" class="flex flex-col items-center transition-all duration-300">
+                <div class="w-16 h-16 rounded-2xl bg-indigo-50 group-hover:bg-indigo-100/80 group-hover:scale-110 text-indigo-600 flex items-center justify-center mb-4 transition-all shadow-sm">
+                  <i data-lucide="cloud-lightning" class="w-8 h-8"></i>
+                </div>
+                <h3 class="font-bold text-slate-800 text-lg mb-1 group-hover:text-indigo-600 transition-colors">Drop QR Image Here</h3>
+                <p class="text-sm text-slate-500 max-w-xs mb-4">Or click to browse your local device files. Supports PNG, JPG, JPEG, and WebP.</p>
+                <span class="px-4 py-2 bg-white border border-indigo-100 shadow-sm rounded-xl text-xs font-bold text-indigo-600 transition-all group-hover:shadow-md">Select Document</span>
+              </div>
+
+              <!-- Uploading / Previewing State -->
+              <div id="upload-preview-state" class="hidden absolute inset-0 p-4 flex flex-col items-center justify-center bg-white/90 rounded-2xl">
+                <div class="relative max-h-[80%] max-w-[80%] rounded-lg overflow-hidden border border-slate-200 shadow-inner mb-3">
+                  <img id="uploaded-image-preview" src="#" alt="Preview" class="object-contain max-h-[220px]">
+                </div>
+                <p id="upload-feedback" class="text-sm font-semibold text-slate-600">Processing file...</p>
+                <button onclick="resetUploadState(event)" class="mt-2 text-xs font-bold text-red-500 hover:text-red-700 flex items-center gap-1">
+                  <i data-lucide="trash-2" class="w-3.5 h-3.5"></i> Clear File
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- TAB 3: QR Code Generator -->
+          <div id="panel-create-qr" class="tab-panel hidden flex flex-col">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+              
+              <!-- Left side inputs -->
+              <div class="space-y-4">
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">QR Payload / Data</label>
+                  <div class="relative">
+                    <input type="text" id="qr-input-text" placeholder="Type URL or any plain text here..." class="w-full px-4 py-3 bg-white/70 border border-slate-200 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 rounded-xl transition-all font-medium text-sm text-slate-800 outline-none pr-10" oninput="generateQR()">
+                    <span class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                      <i data-lucide="link" class="w-4 h-4"></i>
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Customizations -->
+                <div class="grid grid-cols-2 gap-3">
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Primary Color</label>
+                    <div class="flex items-center gap-2 bg-white/70 px-3 py-2 border border-slate-200 rounded-xl">
+                      <input type="color" id="qr-color-dark" value="#4f46e5" class="w-7 h-7 rounded border-0 cursor-pointer" oninput="generateQR()">
+                      <span class="text-xs font-bold text-slate-600">Dark</span>
+                    </div>
+                  </div>
+                  <div>
+                    <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Background</label>
+                    <div class="flex items-center gap-2 bg-white/70 px-3 py-2 border border-slate-200 rounded-xl">
+                      <input type="color" id="qr-color-light" value="#ffffff" class="w-7 h-7 rounded border-0 cursor-pointer" oninput="generateQR()">
+                      <span class="text-xs font-bold text-slate-600">Light</span>
+                    </div>
+                  </div>
+                </div>
+
+                <div>
+                  <label class="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-1.5">Error Correction Level</label>
+                  <select id="qr-error-level" class="w-full px-4 py-2 bg-white/70 border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 outline-none focus:border-indigo-500" onchange="generateQR()">
+                    <option value="H">High (30% recovery)</option>
+                    <option value="Q">Quartile (25% recovery)</option>
+                    <option value="M" selected>Medium (15% recovery)</option>
+                    <option value="L">Low (7% recovery)</option>
+                  </select>
+                </div>
+              </div>
+
+              <!-- Right side preview -->
+              <div class="flex flex-col items-center justify-center bg-white/50 border border-indigo-100/40 p-6 rounded-2xl shadow-inner min-h-[240px]">
+                <div id="qrcode-container" class="bg-white p-3.5 rounded-xl shadow-md border border-slate-100 flex items-center justify-center transition-transform hover:scale-105 duration-300">
+                  <!-- Generator output -->
+                </div>
+                <div id="gen-actions" class="mt-4 flex gap-2 w-full hidden">
+                  <button onclick="downloadQR()" class="flex-1 py-2 px-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow-md shadow-indigo-600/10 transition-all flex items-center justify-center gap-1.5">
+                    <i data-lucide="download" class="w-3.5 h-3.5"></i> Download
+                  </button>
+                  <button onclick="copyGeneratedQR()" class="flex-1 py-2 px-3 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5">
+                    <i data-lucide="copy" class="w-3.5 h-3.5"></i> Share
+                  </button>
+                </div>
+                <p id="gen-placeholder-text" class="text-xs text-slate-400 mt-2 text-center">Type in the input field to generate a physical QR image automatically.</p>
+              </div>
+
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+    </section>
+
+    <!-- Right Interaction Deck (Results & Scan History) -->
+    <section class="lg:col-span-5 w-full flex flex-col gap-6">
+      
+      <!-- Instant Result Panel -->
+      <div id="result-container" class="glass-panel rounded-3xl p-6 shadow-xl slide-up relative overflow-hidden flex flex-col justify-between min-h-[220px]">
+        <div class="absolute -right-6 -top-6 w-24 h-24 bg-gradient-to-br from-indigo-500/10 to-cyan-500/10 rounded-full blur-xl pointer-events-none"></div>
+        
+        <div>
+          <div class="flex items-center justify-between mb-3.5">
+            <h2 class="text-base font-extrabold tracking-tight title-font flex items-center gap-2 text-indigo-900">
+              <span class="w-2 h-2 rounded-full bg-indigo-500 pulse-glow"></span>
+              LIVE DECODER
+            </h2>
+            <span id="result-timestamp" class="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Awaiting Scan</span>
+          </div>
+
+          <!-- Payload Text block -->
+          <div class="bg-white/80 border border-slate-100 rounded-2xl p-4 min-h-[90px] relative flex items-center justify-center text-center group">
+            <p id="result-text" class="text-sm font-semibold text-slate-400 max-w-full break-all leading-relaxed">Place QR Code in camera viewfinder or drop file inside to extract decoded results automatically.</p>
+            
+            <!-- Quick Action overlays -->
+            <button id="copy-quick-btn" onclick="copyResultText()" class="absolute right-2.5 bottom-2.5 p-2 bg-indigo-50/50 hover:bg-indigo-100 text-indigo-600 rounded-xl transition-all opacity-0 pointer-events-none group-hover:opacity-100 group-hover:pointer-events-auto shadow-sm" title="Copy to clipboard">
+              <i data-lucide="copy" class="w-4 h-4"></i>
+            </button>
+          </div>
+        </div>
+
+        <!-- Result Context Actions -->
+        <div id="result-actions" class="mt-4 grid grid-cols-2 gap-3 pointer-events-none opacity-40 transition-all">
+          <a id="action-visit-link" href="#" target="_blank" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/10 hover:shadow-indigo-600/20 transition-all flex items-center justify-center gap-2 text-sm text-center">
+            <i data-lucide="external-link" class="w-4 h-4"></i> Visit Link
+          </a>
+          <button onclick="searchWebResult()" class="w-full py-3 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl border border-slate-200 transition-all flex items-center justify-center gap-2 text-sm">
+            <i data-lucide="search" class="w-4 h-4"></i> Search Web
+          </button>
+        </div>
+      </div>
+
+      <!-- History Deck -->
+      <div class="glass-panel rounded-3xl p-6 shadow-xl flex flex-col max-h-[310px]">
+        <div class="flex items-center justify-between mb-4 border-b border-indigo-50/50 pb-3">
+          <h2 class="text-base font-extrabold tracking-tight title-font flex items-center gap-2 text-indigo-950">
+            <i data-lucide="history" class="w-4.5 h-4.5 text-indigo-600"></i>
+            Scan Registry
+          </h2>
+          <button onclick="clearHistory()" class="text-xs font-bold text-red-500 hover:text-red-700 transition-colors flex items-center gap-1">
+            <i data-lucide="trash" class="w-3.5 h-3.5"></i> Reset All
+          </button>
+        </div>
+
+        <!-- History Item Scrollable Wrapper -->
+        <div id="history-list" class="flex-1 overflow-y-auto space-y-2.5 pr-1">
+          <!-- Empty State -->
+          <div id="history-empty" class="flex flex-col items-center justify-center py-10 text-center">
+            <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-2">
+              <i data-lucide="folder-open" class="w-5 h-5"></i>
+            </div>
+            <p class="text-xs font-semibold text-slate-500">Registry is empty</p>
+            <p class="text-[10px] text-slate-400">Scanned history will compile here.</p>
+          </div>
+        </div>
+      </div>
+
+    </section>
+
+  </main>
+
+  <!-- Interactive Floating Instructions / Quick Help -->
+  <footer class="w-full max-w-5xl z-10 flex flex-col md:flex-row items-center justify-between gap-4 mt-4 pt-6 border-t border-indigo-100/30 text-xs font-medium text-slate-500">
+    <div class="flex items-center gap-4">
+      <span class="flex items-center gap-1"><i data-lucide="shield-check" class="w-3.5 h-3.5 text-indigo-500"></i> 100% Client-Side Encryption</span>
+      <span class="flex items-center gap-1"><i data-lucide="zap" class="w-3.5 h-3.5 text-indigo-500"></i> High Speed Processing</span>
+    </div>
+    <p class="text-center md:text-right">&copy; 2026 AuraScan. Engineered for flawless scan performance.</p>
+  </footer>
+
+  <!-- Notification Toast Container -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-5 py-3 bg-slate-900/90 backdrop-blur-md text-white text-xs font-bold rounded-2xl shadow-xl transition-all duration-500 opacity-0 scale-90 translate-y-4 pointer-events-none z-50 flex items-center gap-2">
+    <i data-lucide="check-circle" class="w-4 h-4 text-emerald-400"></i>
+    <span id="toast-message">Copied success!</span>
+  </div>
+
+  <script src="app.js" defer></script>
+</body>
+</html>
